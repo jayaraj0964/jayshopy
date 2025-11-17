@@ -2,6 +2,8 @@
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
+  console.log('Webhook received:', req.headers, req.body); // ← DEBUG
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -16,8 +18,8 @@ export default async function handler(req, res) {
 
   const secret = process.env.CASHFREE_SECRET_KEY;
   if (!secret) {
-    console.error('CASHFREE_SECRET_KEY not set');
-    return res.status(500).json({ error: 'Server error' });
+    console.error('CASHFREE_SECRET_KEY not set in Vercel!');
+    return res.status(500).json({ error: 'Server misconfigured' });
   }
 
   const payloadString = JSON.stringify(body);
@@ -27,7 +29,11 @@ export default async function handler(req, res) {
   hmac.update(dataToSign);
   const computedSignature = hmac.digest('base64');
 
+  console.log('Computed:', computedSignature);
+  console.log('Received:', signature);
+
   if (computedSignature !== signature) {
+    console.warn('Invalid signature!');
     return res.status(400).json({ error: 'Invalid signature' });
   }
 
@@ -44,12 +50,12 @@ export default async function handler(req, res) {
     });
 
     if (!backendRes.ok) {
-      console.error('Backend failed:', await backendRes.text());
+      const err = await backendRes.text();
+      console.error('Backend failed:', err);
     }
   } catch (err) {
     console.error('Fetch error:', err);
   }
 
-  // MUST RETURN RESPONSE
   return res.status(200).json({ success: true });
 }
