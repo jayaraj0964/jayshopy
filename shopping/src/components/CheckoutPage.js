@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import './CheckoutPage.css';
 
 function CheckoutForm() {
-const { updateCartCount } = useAuth();
+  const { updateCartCount } = useAuth();
   const navigate = useNavigate();
 
   // CART
@@ -19,49 +19,42 @@ const { updateCartCount } = useAuth();
     fullName: '', phone: '', street: '', city: '', state: '', pincode: '', landmark: ''
   });
 
-  // PAYMENT UI state
-  const [orderId, setOrderId] = useState(null);          // ORD_123 or numeric id
+  // PAYMENT STATE
+  const [orderId, setOrderId] = useState(null);           // DB ID or ORD_123
   const [qrUrl, setQrUrl] = useState('');
   const [showPaymentScreen, setShowPaymentScreen] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(300);         // countdown in seconds
+  const [timeLeft, setTimeLeft] = useState(300);         // 5 min
   const [isPolling, setIsPolling] = useState(false);
-  const [amountToPay, setAmountToPay] = useState(0);     // amount from backend (rupees)
+  const [amountToPay, setAmountToPay] = useState(0);
 
-  // timers/interval refs
+  // Refs
   const pollIntervalRef = useRef(null);
   const timeoutRef = useRef(null);
 
-  // API config
+  // API
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
   const getToken = () => localStorage.getItem('token');
 
+  // Load cart
   useEffect(() => {
     loadCart();
-    return () => {
-      stopPolling();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => stopPolling();
   }, []);
 
+  // Countdown
   useEffect(() => {
     if (showPaymentScreen && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
       return () => clearTimeout(timer);
     } else if (showPaymentScreen && timeLeft === 0) {
-      setError('Payment timeout. Please try again.');
-      toast.error('Payment timeout. Please try again.');
-      stopPolling();
-      setShowPaymentScreen(false);
+      handleTimeout();
     }
   }, [showPaymentScreen, timeLeft]);
 
-  // LOAD CART
   const loadCart = async () => {
     try {
       const token = getToken();
-      if (!token) {
-        throw new Error('Please login to continue');
-      }
+      if (!token) throw new Error('Please login');
 
       const res = await fetch(`${API_URL}/user/cart`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -71,14 +64,13 @@ const { updateCartCount } = useAuth();
       const data = await res.json();
       setCart(data);
     } catch (err) {
-      console.error(err);
-      setError('Failed to load cart');
+      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Address handlers
   const handleInput = (e) => {
     setAddress({ ...address, [e.target.name]: e.target.value });
   };
@@ -101,18 +93,18 @@ const { updateCartCount } = useAuth();
     return true;
   };
 
-  // PAY NOW → CREATE ORDER + GET QR FROM BACKEND
+  // PAY NOW
   const payNow = async (e) => {
     e.preventDefault();
     if (!validateAddress()) return;
 
-    const shippingAddress = `${address.fullName}, ${address.phone}, ${address.street}, ${address.landmark ? address.landmark + ', ' : ''}${address.city}, ${address.state} - ${address.pincode}`;
+    const shippingAddress = `${address.fullName}, ${address.phone}, ${address.street}${address.landmark ? ', ' + address.landmark : ''}, ${address.city}, ${address.state} - ${address.pincode}`;
 
     try {
       const token = getToken();
-      if (!token) throw new Error('Please login to continue');
+      if (!token) throw new Error('Login expired');
 
-      // 1) CREATE ORDER on backend (your API should return numeric db id or ORD_ prefixed id)
+      // 1. Create order
       const orderRes = await fetch(`${API_URL}/user/checkout`, {
         method: 'POST',
         headers: {
@@ -124,10 +116,9 @@ const { updateCartCount } = useAuth();
 
       if (!orderRes.ok) throw new Error(await orderRes.text());
       const orderData = await orderRes.json();
-      const newOrderId = orderData.orderId; // can be numeric or "ORD_123"
-      const backendCheckoutAmount = typeof orderData.amount === 'number' ? orderData.amount : null;
+      const dbOrderId = orderData.orderId; // numeric or ORD_123
 
-      // 2) ASK BACKEND TO CREATE CASHFREE ORDER / RETURN QR
+      // 2. Create UPI payment
       const paymentRes = await fetch(`${API_URL}/user/create-upi-payment`, {
         method: 'POST',
         headers: {
@@ -135,7 +126,7 @@ const { updateCartCount } = useAuth();
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          orderId: newOrderId,
+          orderId: dbOrderId,
           shippingAddress
         })
       });
@@ -143,36 +134,33 @@ const { updateCartCount } = useAuth();
       if (!paymentRes.ok) throw new Error(await paymentRes.text());
       const paymentData = await paymentRes.json();
 
-      // Use backend amount (single source of truth)
-      setAmountToPay(typeof paymentData.amount === 'number' ? paymentData.amount : (backendCheckoutAmount ?? (cart?.totalPrice || 0)));
+      // Set amount
+      const amount = paymentData.amount || orderData.amount || cart.totalPrice;
+      setAmountToPay(amount);
 
-      // store orderId used for polling (prefer backend returned one)
-      const returnedOrderId = paymentData.orderId || newOrderId;
-      setOrderId(returnedOrderId);
-      setQrUrl(paymentData.qrCodeUrl);
+      // Use orderId from backend
+      const finalOrderId = paymentData.orderId || dbOrderId;
+      setOrderId(finalOrderId);
+      setQrUrl(paymentData.qrCodeUrl || paymentData.qr_url);
       setShowPaymentScreen(true);
       setTimeLeft(300);
 
-      // Start polling for payment status (pass DB id or ORD_ id as your /order-status expects)
-      startPolling(returnedOrderId);
+      // Start polling
+      startPolling(finalOrderId);
 
       toast.success('QR Generated! Scan to pay');
-      setError(null);
     } catch (err) {
-      console.error(err);
-      setError(err.message || 'Payment failed');
-      toast.error(err.message || 'Payment failed');
+      setError(err.message);
+      toast.error(err.message);
     }
   };
 
   // POLLING
   const startPolling = (id) => {
-    if (isPolling && pollIntervalRef.current) return;
+    if (isPolling) return;
     setIsPolling(true);
 
     const token = getToken();
-
-    // Normalize id for API call: strip ORD_ if backend expects numeric id
     const apiId = String(id).replace(/^ORD_/, '');
 
     pollIntervalRef.current = setInterval(async () => {
@@ -181,51 +169,60 @@ const { updateCartCount } = useAuth();
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
 
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+          const text = await res.text();
+          if (res.status === 401) {
+            stopPolling();
+            toast.error('Session expired');
+            navigate('/login');
+            return;
+          }
+          throw new Error(text);
+        }
+
         const data = await res.json();
-
-        console.log('Polling status:', data.status);
-
         const status = (data.status || '').toUpperCase();
+
+        console.log('Poll status:', status);
 
         if (status === 'PAID') {
           stopPolling();
           updateCartCount();
           toast.success('Payment successful!');
           const tx = data.transactionId || data.transaction_id || '';
-          setShowPaymentScreen(false);
-          navigate('/order-success', { state: { orderId: apiId, transactionId: tx } });
-        } else if (status === 'FAILED' || status === 'CANCELLED') {
+          navigate('/order-success', {
+            state: { orderId: apiId, transactionId: tx }
+          });
+        } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(status)) {
           stopPolling();
-          setError(status === 'CANCELLED' ? 'Payment cancelled' : 'Payment failed');
-          toast.error(status === 'CANCELLED' ? 'Payment cancelled' : 'Payment failed');
+          setError(`Payment ${status.toLowerCase()}`);
+          toast.error(`Payment ${status.toLowerCase()}`);
           setShowPaymentScreen(false);
         }
-        // otherwise keep polling
       } catch (err) {
-        console.error('Polling error:', err);
-        // ignore transient errors; keep polling
+        console.warn('Polling error (retrying):', err.message);
+        // Keep polling
       }
     }, 3000);
 
-    // Stop polling after 5 minutes (safety)
+    // Safety timeout
     timeoutRef.current = setTimeout(() => {
       stopPolling();
-      setShowPaymentScreen(false);
-      setError('Payment timed out. Please try again.');
-    }, 300000);
+      handleTimeout();
+    }, 300000); // 5 min
   };
 
   const stopPolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setIsPolling(false);
+  };
+
+  const handleTimeout = () => {
+    stopPolling();
+    setError('Payment timed out. Try again.');
+    toast.error('Payment timed out');
+    setShowPaymentScreen(false);
   };
 
   const formatTime = (s) => {
@@ -234,18 +231,17 @@ const { updateCartCount } = useAuth();
     return `${m}:${sec < 10 ? '0' : ''}${sec}`;
   };
 
-  // UI: loading / empty states
+  // UI
   if (loading) return <div className="loading">Loading cart...</div>;
   if (!cart?.items?.length) return <div className="empty">Cart is empty</div>;
 
   const cartTotal = cart.totalPrice || 0;
 
-  // CHECKOUT FORM
+  // FORM
   if (!showPaymentScreen) {
     return (
       <div className="checkout-container">
         <h1>Checkout</h1>
-
         <div className="checkout-grid">
           <div className="form-section">
             <h2>Delivery Address</h2>
@@ -263,7 +259,6 @@ const { updateCartCount } = useAuth();
               <button type="submit" className="pay-btn-final">
                 Pay ₹{cartTotal.toFixed(2)} via QR
               </button>
-
               {error && <div className="error">{error}</div>}
             </form>
           </div>
@@ -293,8 +288,11 @@ const { updateCartCount } = useAuth();
         <p>Amount: <strong>₹{Number(amountToPay).toFixed(2)}</strong></p>
 
         <div className="qr-container">
-          {/* If qrUrl is a data URL or image url display it; if it's a UPI link, you may want to generate QR client-side */}
-          {qrUrl ? <img src={qrUrl} alt="Scan QR" className="qr-img" /> : <div className="no-qr">QR not available</div>}
+          {qrUrl ? (
+            <img src={qrUrl} alt="Scan QR" className="qr-img" />
+          ) : (
+            <div className="no-qr">Generating QR...</div>
+          )}
         </div>
 
         <p className="scan-text">Scan with <strong>PhonePe / GPay / Paytm</strong></p>
@@ -308,37 +306,33 @@ const { updateCartCount } = useAuth();
           <button
             className="btn"
             onClick={() => {
-              // manual re-check immediately
-              const apiId = String(orderId || '').replace(/^ORD_/, '');
-              if (apiId) startPolling(apiId);
+              const apiId = String(orderId).replace(/^ORD_/, '');
+              if (apiId && !isPolling) startPolling(apiId);
             }}
+            disabled={isPolling}
           >
-            Re-check status
+            {isPolling ? 'Checking...' : 'Re-check'}
           </button>
 
           <button
             className="btn-secondary"
             onClick={() => {
-              // Open return page (frontend) so user can re-check / let Cashfree redirect UX work
-              const returnUrl = `${window.location.origin}/payment-return?orderId=${encodeURIComponent(orderId || '')}`;
-              window.location.href = returnUrl;
+              window.location.href = `/payment-return?orderId=${encodeURIComponent(orderId)}`;
             }}
           >
-            Open payment return page
+            Open Return Page
           </button>
 
           <button
             className="btn-ghost"
             onClick={() => {
               if (qrUrl) {
-                navigator.clipboard?.writeText(qrUrl);
-                toast.success('QR link copied to clipboard');
-              } else {
-                toast.error('No QR link to copy');
+                navigator.clipboard.writeText(qrUrl);
+                toast.success('QR link copied!');
               }
             }}
           >
-            Copy QR link
+            Copy QR Link
           </button>
         </div>
 
