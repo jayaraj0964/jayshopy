@@ -1,0 +1,163 @@
+/* CheckoutPage.css */
+.checkout-container {
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.checkout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.form-section, .summary {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.form-section h2, .summary h2 {
+  margin-top: 0;
+  font-size: 20px;
+  color: #1a1a1a;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pay-btn-final {
+  background: #1976d2;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.pay-btn-final:hover {
+  background: #1565c0;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.total {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 12px;
+  text-align: right;
+}
+
+.error {
+  color: #d32f2f;
+  background: #ffebee;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+/* QR SCREEN */
+.payment-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 20px;
+}
+
+.payment-card {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.payment-card h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.payment-card p {
+  margin: 8px 0;
+  color: #555;
+}
+
+.qr-container {
+  background: #f9f9f9;
+  border-radius: 16px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.qr-img {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  border-radius: 12px;
+}
+
+.scan-text {
+  font-size: 15px;
+  margin: 16px 0;
+  color: #333;
+}
+
+.timer {
+  margin: 24px 0;
+}
+
+.time-circle {
+  width: 70px;
+  height: 70px;
+  margin: 0 auto 8px;
+  background: #e3f2fd;
+  color: #1976d2;
+  font-weight: bold;
+  font-size: 18px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.warning {
+  font-size: 13px;
+  color: #d32f2f;
+  margin-top: 24px;
+}
+
+.loading, .empty {
+  text-align: center;
+  padding: 60px;
+  font-size: 18px;
+  color: #666;
+}

@@ -1,0 +1,83 @@
+/* src/components/UserDashboard.css */
+.dashboard {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.product-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: 0.3s;
+  text-align: center;
+  padding: 1rem;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.product-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: contain;
+  background: #f8f8f8;
+}
+
+.no-image {
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.price {
+  font-weight: bold;
+  color: #388e3c;
+  margin: 0.5rem 0;
+}
+
+.add-to-cart {
+  background: #ff9f00;
+  color: white;
+  border: none;
+  padding: 0.75rem;
+  width: 100%;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-to-cart:hover {
+  background: #fb8c00;
+}
+
+.empty-state, .guest-state {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.guest-state a {
+  color: #2874f0;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.guest-state a:hover {
+  text-decoration: underline;
+}
