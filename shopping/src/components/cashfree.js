@@ -2,7 +2,9 @@
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const signature = req.headers['x-webhook-signature'];
   const timestamp = req.headers['x-webhook-timestamp'];
@@ -12,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing data' });
   }
 
-  const secret = process.env.CASHFREE_SECRET_KEY; // ← SAFE!
+  const secret = process.env.CASHFREE_SECRET_KEY;
   if (!secret) {
     console.error('CASHFREE_SECRET_KEY not set');
     return res.status(500).json({ error: 'Server error' });
@@ -29,8 +31,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid signature' });
   }
 
+  // Forward to backend
   try {
-    await fetch(`${process.env.BACKEND_URL}/api/user/webhook/cashfree`, {
+    const backendRes = await fetch(`${process.env.BACKEND_URL}/api/user/webhook/cashfree`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,9 +42,14 @@ export default async function handler(req, res) {
       },
       body: payloadString
     });
+
+    if (!backendRes.ok) {
+      console.error('Backend failed:', await backendRes.text());
+    }
   } catch (err) {
-    console.error('Backend webhook failed:', err);
+    console.error('Fetch error:', err);
   }
 
+  // MUST RETURN RESPONSE
   return res.status(200).json({ success: true });
 }
