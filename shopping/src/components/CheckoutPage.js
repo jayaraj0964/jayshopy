@@ -20,10 +20,10 @@ function CheckoutForm() {
   });
 
   // PAYMENT STATE
-  const [orderId, setOrderId] = useState(null);           // DB ID or ORD_123
+  const [orderId, setOrderId] = useState(null);
   const [qrUrl, setQrUrl] = useState('');
   const [showPaymentScreen, setShowPaymentScreen] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(300);         // 5 min
+  const [timeLeft, setTimeLeft] = useState(300);
   const [isPolling, setIsPolling] = useState(false);
   const [amountToPay, setAmountToPay] = useState(0);
 
@@ -35,13 +35,14 @@ function CheckoutForm() {
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
   const getToken = () => localStorage.getItem('token');
 
-  // Load cart
+  // Load cart on mount
   useEffect(() => {
     loadCart();
     return () => stopPolling();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Countdown
+  // Countdown timer
   useEffect(() => {
     if (showPaymentScreen && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
@@ -49,6 +50,7 @@ function CheckoutForm() {
     } else if (showPaymentScreen && timeLeft === 0) {
       handleTimeout();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPaymentScreen, timeLeft]);
 
   const loadCart = async () => {
@@ -65,7 +67,7 @@ function CheckoutForm() {
       setCart(data);
     } catch (err) {
       setError(err.message);
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to load cart');
     } finally {
       setLoading(false);
     }
@@ -78,11 +80,11 @@ function CheckoutForm() {
   const validateAddress = () => {
     const { fullName, phone, street, city, state, pincode } = address;
     if (!fullName || !phone || !street || !city || !state || !pincode) {
-      setError('Fill all required fields');
+      setError('Please fill all required fields');
       return false;
     }
     if (!/^\d{10}$/.test(phone)) {
-      setError('Invalid phone');
+      setError('Invalid phone number');
       return false;
     }
     if (!/^\d{6}$/.test(pincode)) {
@@ -102,9 +104,9 @@ function CheckoutForm() {
 
     try {
       const token = getToken();
-      if (!token) throw new Error('Login expired');
+      if (!token) throw new Error('Session expired. Please login again.');
 
-      // 1. Create order
+      // 1. Create Order
       const orderRes = await fetch(`${API_URL}/user/checkout`, {
         method: 'POST',
         headers: {
@@ -116,42 +118,35 @@ function CheckoutForm() {
 
       if (!orderRes.ok) throw new Error(await orderRes.text());
       const orderData = await orderRes.json();
-      const dbOrderId = orderData.orderId; // numeric or ORD_123
+      const dbOrderId = orderData.orderId;
 
-      // 2. Create UPI payment
+      // 2. Create UPI Payment
       const paymentRes = await fetch(`${API_URL}/user/create-upi-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          orderId: dbOrderId,
-          shippingAddress
-        })
+        body: JSON.stringify({ orderId: dbOrderId, shippingAddress })
       });
 
       if (!paymentRes.ok) throw new Error(await paymentRes.text());
       const paymentData = await paymentRes.json();
 
-      // Set amount
-      const amount = paymentData.amount || orderData.amount || cart.totalPrice;
-      setAmountToPay(amount);
-
-      // Use orderId from backend
+      const amount = paymentData.amount || orderData.amount || cart?.totalPrice || 0;
       const finalOrderId = paymentData.orderId || dbOrderId;
+
+      setAmountToPay(amount);
       setOrderId(finalOrderId);
-      setQrUrl(paymentData.qrCodeUrl || paymentData.qr_url);
+      setQrUrl(paymentData.qrCodeUrl || paymentData.qr_url || '');
       setShowPaymentScreen(true);
       setTimeLeft(300);
-
-      // Start polling
       startPolling(finalOrderId);
 
-      toast.success('QR Generated! Scan to pay');
+      toast.success('QR Generated! Scan & Pay');
     } catch (err) {
       setError(err.message);
-      toast.error(err.message);
+      toast.error(err.message || 'Payment setup failed');
     }
   };
 
@@ -170,29 +165,24 @@ function CheckoutForm() {
         });
 
         if (!res.ok) {
-          const text = await res.text();
           if (res.status === 401) {
             stopPolling();
             toast.error('Session expired');
             navigate('/login');
             return;
           }
-          throw new Error(text);
+          throw new Error(await res.text());
         }
 
         const data = await res.json();
         const status = (data.status || '').toUpperCase();
 
-        console.log('Poll status:', status);
-
         if (status === 'PAID') {
           stopPolling();
           updateCartCount();
-          toast.success('Payment successful!');
+          toast.success('Payment Successful!');
           const tx = data.transactionId || data.transaction_id || '';
-          navigate('/order-success', {
-            state: { orderId: apiId, transactionId: tx }
-          });
+          navigate('/order-success', { state: { orderId: apiId, transactionId: tx } });
         } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(status)) {
           stopPolling();
           setError(`Payment ${status.toLowerCase()}`);
@@ -200,44 +190,44 @@ function CheckoutForm() {
           setShowPaymentScreen(false);
         }
       } catch (err) {
-        console.warn('Polling error (retrying):', err.message);
-        // Keep polling
+        console.warn('Polling retrying...', err.message);
       }
     }, 3000);
 
-    // Safety timeout
     timeoutRef.current = setTimeout(() => {
       stopPolling();
       handleTimeout();
-    }, 300000); // 5 min
+    }, 300000);
   };
 
   const stopPolling = () => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    pollIntervalRef.current = null;
+    timeoutRef.current = null;
     setIsPolling(false);
   };
 
   const handleTimeout = () => {
     stopPolling();
-    setError('Payment timed out. Try again.');
+    setError('Payment timed out. Please try again.');
     toast.error('Payment timed out');
     setShowPaymentScreen(false);
   };
 
-  const formatTime = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // UI
+  // Loading & Empty States
   if (loading) return <div className="loading">Loading cart...</div>;
-  if (!cart?.items?.length) return <div className="empty">Cart is empty</div>;
+  if (!cart?.items?.length) return <div className="empty">Your cart is empty</div>;
 
   const cartTotal = cart.totalPrice || 0;
 
-  // FORM
+  // Checkout Form
   if (!showPaymentScreen) {
     return (
       <div className="checkout-container">
@@ -248,8 +238,8 @@ function CheckoutForm() {
             <form onSubmit={payNow}>
               <input name="fullName" placeholder="Full Name *" value={address.fullName} onChange={handleInput} required />
               <input name="phone" placeholder="Phone *" value={address.phone} onChange={handleInput} required />
-              <input name="street" placeholder="Street *" value={address.street} onChange={handleInput} required />
-              <input name="landmark" placeholder="Landmark" value={address.landmark} onChange={handleInput} />
+              <input name="street" placeholder="Street Address *" value={address.street} onChange={handleInput} required />
+              <input name="landmark" placeholder="Landmark (Optional)" value={address.landmark} onChange={handleInput} />
               <div className="row">
                 <input name="city" placeholder="City *" value={address.city} onChange={handleInput} required />
                 <input name="state" placeholder="State *" value={address.state} onChange={handleInput} required />
@@ -280,7 +270,7 @@ function CheckoutForm() {
     );
   }
 
-  // QR SCREEN
+  // QR Payment Screen
   return (
     <div className="payment-screen">
       <div className="payment-card">
@@ -289,17 +279,17 @@ function CheckoutForm() {
 
         <div className="qr-container">
           {qrUrl ? (
-            <img src={qrUrl} alt="Scan QR" className="qr-img" />
+            <img src={qrUrl} alt="Scan to Pay" className="qr-img" />
           ) : (
-            <div className="no-qr">Generating QR...</div>
+            <div className="no-qr">Generating QR Code...</div>
           )}
         </div>
 
-        <p className="scan-text">Scan with <strong>PhonePe / GPay / Paytm</strong></p>
+        <p className="scan-text">Scan with <strong>PhonePe • GPay • Paytm</strong></p>
 
         <div className="timer">
           <div className="time-circle">{formatTime(timeLeft)}</div>
-          <p>Time left</p>
+          <p>Time remaining</p>
         </div>
 
         <div className="qr-actions">
@@ -311,14 +301,12 @@ function CheckoutForm() {
             }}
             disabled={isPolling}
           >
-            {isPolling ? 'Checking...' : 'Re-check'}
+            {isPolling ? 'Checking...' : 'Check Status'}
           </button>
 
           <button
             className="btn-secondary"
-            onClick={() => {
-              window.location.href = `/payment-return?orderId=${encodeURIComponent(orderId)}`;
-            }}
+            onClick={() => window.location.href = `/payment-return?orderId=${encodeURIComponent(orderId)}`}
           >
             Open Return Page
           </button>
@@ -328,7 +316,7 @@ function CheckoutForm() {
             onClick={() => {
               if (qrUrl) {
                 navigator.clipboard.writeText(qrUrl);
-                toast.success('QR link copied!');
+                toast.success('QR Link Copied!');
               }
             }}
           >
@@ -336,7 +324,7 @@ function CheckoutForm() {
           </button>
         </div>
 
-        <p className="warning">Do not refresh or go back</p>
+        <p className="warning">Do not refresh or close this page</p>
         {error && <div className="error">{error}</div>}
       </div>
     </div>
