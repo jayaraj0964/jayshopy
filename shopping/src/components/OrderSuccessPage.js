@@ -1,18 +1,17 @@
-// src/components/OrderSuccessPage.js
-import React from 'react';
-import { Link } from 'react-router-dom';
-import './OrderSuccessPage.css';
+// src/pages/OrderSuccess.jsx
+import { useSearchParams } from 'react-router-dom';
 
-function OrderSuccessPage() {
+export default function OrderSuccess() {
+  const [params] = useSearchParams();
+  const orderId = params.get('order_id');
+  const status = params.get('status');
+
   return (
-    <div className="success-container">
-      <div className="success-card">
-        <h1>Order Placed Successfully!</h1>
-        <p>Thank you for shopping with us.</p>
-        <Link to="/" className="home-btn">Continue Shopping</Link>
-      </div>
+    <div className="success-page">
+      <h1>Payment Successful!</h1>
+      <p>Order ID: <strong>{orderId}</strong></p>
+      <p>Thank you for shopping with us!</p>
+      <a href="/">Continue Shopping</a>
     </div>
   );
 }
-
-export default OrderSuccessPage;   // ✅ Correct default export
