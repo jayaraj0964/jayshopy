@@ -32,7 +32,7 @@ function CheckoutForm() {
   const timeoutRef = useRef(null);
 
   // API
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+  const API_URL = process.env.REACT_APP_API_URL || 'https://jayshoppy3-backend-1.onrender.com/api';
   const getToken = () => localStorage.getItem('token');
 
   // Load cart on mount
@@ -178,6 +178,7 @@ function CheckoutForm() {
         const status = (data.status || '').toUpperCase();
 
         if (status === 'PAID') {
+          clearInterval(pollingInterval);
           stopPolling();
           updateCartCount();
           toast.success('Payment Successful!');
