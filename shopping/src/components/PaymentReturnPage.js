@@ -1,6 +1,6 @@
 // src/pages/PaymentReturnPage.jsx
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://jayshoppy3-backend-1.onrender.com/api';
@@ -8,75 +8,87 @@ const getToken = () => localStorage.getItem('token');
 
 export default function PaymentReturnPage() {
   const navigate = useNavigate();
-  const [orderIdParam, setOrderIdParam] = useState(null);     // can be "ORD_123" or "123"
-  const [loading, setLoading] = useState(false);
+  const location = useLocation(); // ← ADDED (better than window.location)
+  
+  const [orderIdParam, setOrderIdParam] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [error, setError] = useState('');
+  
   const pollingRef = useRef(null);
+  const hasCheckedRef = useRef(false); // ← PREVENT DOUBLE CHECK
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const oid = params.get('orderId') || params.get('order_id') || params.get('order');
-    if (!oid) {
-      setError('Order ID missing in return URL');
-      return;
-    }
-    setOrderIdParam(oid);
-    // immediately check once
-    checkStatus(oid);
-    // eslint-disable-next-line
-  }, []);
-
+  // Normalize Order ID (handles ORD_123 or 123)
   const normalizeOrderId = (oid) => {
     if (!oid) return null;
-    if (typeof oid === 'string' && oid.startsWith('ORD_')) {
-      // if your backend endpoints expect numeric ID, strip prefix
-      const maybe = oid.replace(/^ORD_/, '');
-      return maybe;
-    }
-    return oid;
+    return String(oid).replace(/^ORD_/, '').trim();
   };
 
-  const checkStatus = async (oid) => {
+  // Main status check
+  const checkStatus = async (rawOrderId) => {
+    if (!rawOrderId || hasCheckedRef.current) return;
+    
+    hasCheckedRef.current = true;
     setLoading(true);
     setError('');
+
     try {
+      const idForApi = normalizeOrderId(rawOrderId);
+      if (!idForApi || isNaN(idForApi)) {
+        throw new Error('Invalid Order ID');
+      }
+
       const token = getToken();
-      const idForApi = normalizeOrderId(oid);
       const res = await fetch(`${API_URL}/user/order-status/${idForApi}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setStatus(data.status || '');
-      setTransactionId(data.transactionId || data.transaction_id || '');
-      if ((data.status || '').toUpperCase() === 'PAID') {
-        toast.success('Payment confirmed');
-        // navigate to success page showing transaction id
-        navigate('/order-success', { state: { orderId: idForApi, transactionId: (data.transactionId || data.transaction_id || '') } });
-        return;
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error('Session expired. Login again');
+          navigate('/login');
+          return;
+        }
+        throw new Error('Failed to fetch status');
       }
-      if ((data.status || '').toUpperCase() === 'FAILED') {
-        setError('Payment failed. Please try again or contact support.');
-      } else if ((data.status || '').toUpperCase() === 'PENDING') {
-        // start short polling for a minute
-        startShortPolling(idForApi);
+
+      const data = await res.json();
+      const currentStatus = (data.status || '').toUpperCase();
+
+      setStatus(currentStatus);
+      setTransactionId(data.transactionId || data.transaction_id || '');
+
+      if (currentStatus === 'PAID') {
+        toast.success('Payment Successful!');
+        stopPolling();
+        navigate('/order-success', {
+          state: { orderId: idForApi, transactionId: data.transactionId || '' },
+          replace: true
+        });
+      } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(currentStatus)) {
+        setError(`Payment ${currentStatus.toLowerCase()}`);
+        toast.error(`Payment ${currentStatus.toLowerCase()}`);
+        stopPolling();
       } else {
-        // unknown state
-        setError('Unable to determine payment status yet. Please re-check.');
+        // Still PENDING → start polling
+        startPolling(idForApi);
       }
     } catch (err) {
-      console.error('checkStatus error', err);
-      setError('Could not check payment status right now');
+      console.error('Status check failed:', err);
+      setError('Unable to verify payment. Try refreshing or check Orders.');
+      toast.error('Status check failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const startShortPolling = (idForApi) => {
-    if (pollingRef.current) return;
+  // Short polling (max 2 minutes)
+  const startPolling = (idForApi) => {
+    stopPolling(); // clear any old
     let attempts = 0;
+    const maxAttempts = 40; // ~2 minutes
+
     pollingRef.current = setInterval(async () => {
       attempts++;
       try {
@@ -84,59 +96,98 @@ export default function PaymentReturnPage() {
         const res = await fetch(`${API_URL}/user/order-status/${idForApi}`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
-        if (!res.ok) throw new Error('non-ok');
+
+        if (!res.ok) throw new Error('poll failed');
         const data = await res.json();
-        setStatus(data.status || '');
-        setTransactionId(data.transactionId || data.transaction_id || '');
-        if ((data.status || '').toUpperCase() === 'PAID') {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-          toast.success('Payment confirmed');
-          navigate('/order-success', { state: { orderId: idForApi, transactionId: (data.transactionId || data.transaction_id || '') } });
-        } else if ((data.status || '').toUpperCase() === 'FAILED') {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-          setError('Payment failed. Please try again.');
-        } else if (attempts >= 20) { // ~1 minute at 3s interval
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-          setError('Payment still pending. Please check Orders page later.');
+        const st = (data.status || '').toUpperCase();
+
+        if (st === 'PAID') {
+          stopPolling();
+          toast.success('Payment Confirmed!');
+          navigate('/order-success', {
+            state: { orderId: idForApi, transactionId: data.transactionId || '' },
+            replace: true
+          });
+        } else if (['FAILED', 'CANCELLED'].includes(st)) {
+          stopPolling();
+          setError('Payment failed');
+          toast.error('Payment failed');
+        } else if (attempts >= maxAttempts) {
+          stopPolling();
+          setError('Payment taking longer than usual. Check Orders page.');
+          toast('Still processing...', { icon: '⏳' });
         }
-      } catch (err) {
-        console.error('poll err', err);
+      } catch (e) {
+        console.warn('Polling error, retrying...');
       }
     }, 3000);
   };
 
-  useEffect(() => {
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-  }, []);
-
-  const handleManualRecheck = () => {
-    if (!orderIdParam) return;
-    checkStatus(orderIdParam);
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
   };
 
-  const handleOpenOrders = () => {
-    navigate('/orders'); // or your orders page
+  // Extract orderId from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const oid = params.get('orderId') || params.get('order_id') || params.get('order');
+    
+    if (!oid) {
+      setError('No order ID found in URL');
+      setLoading(false);
+      toast.error('Invalid return URL');
+      return;
+    }
+
+    setOrderIdParam(oid);
+    checkStatus(oid);
+
+    return () => {
+      stopPolling();
+      hasCheckedRef.current = true;
+    };
+  }, [location]);
+
+  const handleManualCheck = () => {
+    if (orderIdParam) {
+      hasCheckedRef.current = false;
+      checkStatus(orderIdParam);
+    }
   };
 
   return (
     <div className="payment-return-container">
-      <h1>Payment status</h1>
-      {loading && <p>Checking payment status…</p>}
-      {status && <p>Status: <strong>{status}</strong></p>}
-      {transactionId && <p>Transaction ID: <strong>{transactionId}</strong></p>}
-      {error && <div className="error">{error}</div>}
+      <div className="payment-card">
+        <h1>Verifying Payment...</h1>
 
-      <div className="actions">
-        <button onClick={handleManualRecheck} className="btn">Re-check status</button>
-        <button onClick={handleOpenOrders} className="btn-secondary">View Orders</button>
+        {loading && <p>Please wait while we confirm your payment</p>}
+        
+        {status && !loading && (
+          <div className="status-box">
+            <p>Status: <strong>{status}</strong></p>
+            {transactionId && <p>Transaction ID: <strong>{transactionId}</strong></p>}
+          </div>
+        )}
+
+        {error && <div className="error">{error}</div>}
+
+        <div className="actions">
+          <button onClick={handleManualCheck} className="btn" disabled={loading}>
+            {loading ? 'Checking...' : 'Re-check Status'}
+          </button>
+          <button onClick={() => navigate('/orders')} className="btn-secondary">
+            View My Orders
+          </button>
+        </div>
+
+        <p className="info">
+          Paid successfully? We'll redirect you in a few seconds.<br />
+          If stuck, use "Re-check Status" or check your Orders.
+        </p>
       </div>
-
-      <p>If you paid but status is not updated, keep this page open or contact support with the UPI transaction id.</p>
     </div>
   );
 }
