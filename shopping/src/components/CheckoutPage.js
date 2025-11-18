@@ -178,7 +178,10 @@ function CheckoutForm() {
         const status = (data.status || '').toUpperCase();
 
         if (status === 'PAID') {
-          clearInterval(pollingInterval);
+          // FIXED: was 'pollingInterval' → now using the correct ref
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+          }
           stopPolling();
           updateCartCount();
           toast.success('Payment Successful!');
@@ -195,6 +198,7 @@ function CheckoutForm() {
       }
     }, 3000);
 
+    // Auto timeout after 5 minutes
     timeoutRef.current = setTimeout(() => {
       stopPolling();
       handleTimeout();
@@ -202,10 +206,14 @@ function CheckoutForm() {
   };
 
   const stopPolling = () => {
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    pollIntervalRef.current = null;
-    timeoutRef.current = null;
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     setIsPolling(false);
   };
 
@@ -248,7 +256,7 @@ function CheckoutForm() {
               <input name="pincode" placeholder="Pincode *" value={address.pincode} onChange={handleInput} required />
 
               <button type="submit" className="pay-btn-final">
-                Pay ₹{cartTotal.toFixed(2)} via QR
+                Pay {cartTotal.toFixed(2)} via QR
               </button>
               {error && <div className="error">{error}</div>}
             </form>
@@ -259,11 +267,11 @@ function CheckoutForm() {
             {cart.items.map(item => (
               <div key={item.id} className="item">
                 <span>{item.productName} × {item.quantity}</span>
-                <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                <span>{(item.price * item.quantity).toFixed(2)}</span>
               </div>
             ))}
             <div className="total">
-              <strong>Total: ₹{cartTotal.toFixed(2)}</strong>
+              <strong>Total: {cartTotal.toFixed(2)}</strong>
             </div>
           </div>
         </div>
@@ -276,7 +284,7 @@ function CheckoutForm() {
     <div className="payment-screen">
       <div className="payment-card">
         <h2>Scan QR to Pay</h2>
-        <p>Amount: <strong>₹{Number(amountToPay).toFixed(2)}</strong></p>
+        <p>Amount: <strong>{Number(amountToPay).toFixed(2)}</strong></p>
 
         <div className="qr-container">
           {qrUrl ? (
