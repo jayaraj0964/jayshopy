@@ -12,27 +12,28 @@ function CheckoutForm() {
   const { updateCartCount } = useAuth();
   const navigate = useNavigate();
 
-  // STATES
+  // CART
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ADDRESS
   const [address, setAddress] = useState({
     fullName: '', phone: '', street: '', city: '', state: '', pincode: '', landmark: ''
   });
 
-  // AFTER ORDER CREATED → SHOW 2 PAYMENT OPTIONS
+  // PAYMENT OPTIONS
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
-  const [orderId, setOrderId] = useState(null); // DB Order ID
+  const [orderId, setOrderId] = useState(null);
   const [amountToPay, setAmountToPay] = useState(0);
 
-  // UPI PAYMENT SCREEN
+  // UPI SCREEN
   const [showUpiScreen, setShowUpiScreen] = useState(false);
   const [upiData, setUpiData] = useState(null);
   const [timeLeft, setTimeLeft] = useState(300);
   const [isPolling, setIsPolling] = useState(false);
 
-  // LOADING STATES
+  // LOADING
   const [loadingUpi, setLoadingUpi] = useState(false);
   const [loadingCard, setLoadingCard] = useState(false);
 
@@ -46,7 +47,6 @@ function CheckoutForm() {
     loadCart();
   }, []);
 
-  // Timer for UPI screen
   useEffect(() => {
     if (showUpiScreen && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
@@ -86,7 +86,7 @@ function CheckoutForm() {
     return true;
   };
 
-  // STEP 1: CREATE ORDER + SHOW 2 PAYMENT BUTTONS
+  // STEP 1: CREATE ORDER & SHOW OPTIONS
   const createOrderAndShowOptions = async (e) => {
     e.preventDefault();
     if (!validateAddress()) return;
@@ -249,7 +249,7 @@ function CheckoutForm() {
     );
   }
 
-  // 2. CHOOSE PAYMENT METHOD
+  // 2. PAYMENT OPTIONS SCREEN
   if (showPaymentOptions && !showUpiScreen) {
     return (
       <div className="payment-options-screen">
