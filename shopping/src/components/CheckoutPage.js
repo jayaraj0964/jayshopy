@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import './CheckoutPage.css';
+/* eslint-disable react-hooks/exhaustive-deps */
 
 function CheckoutForm() {
   const { updateCartCount } = useAuth();
@@ -39,17 +40,17 @@ function CheckoutForm() {
   useEffect(() => {
     loadCart();
     return () => stopPolling();
-  }, []);
+}, [loadCart]);
 
   // Timer
-  useEffect(() => {
-    if (showPaymentScreen && timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (showPaymentScreen && timeLeft === 0) {
-      handleTimeout();
-    }
-  }, [showPaymentScreen, timeLeft]);
+useEffect(() => {
+  if (showPaymentScreen && timeLeft > 0) {
+    const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearTimeout(timer);
+  } else if (showPaymentScreen && timeLeft === 0) {
+    handleTimeout();
+  }
+}, [showPaymentScreen, timeLeft, handleTimeout]);
 
   const loadCart = async () => {
     try {
