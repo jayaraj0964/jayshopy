@@ -21,11 +21,11 @@ function CheckoutForm() {
 
   // PAYMENT STATE
   const [orderId, setOrderId] = useState(null);
-  const [qrUrl, setQrUrl] = useState('');
+  const [amountToPay, setAmountToPay] = useState(0);
+  const [paymentData, setPaymentData] = useState(null); // ← NEW: Full payment info
   const [showPaymentScreen, setShowPaymentScreen] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300);
   const [isPolling, setIsPolling] = useState(false);
-  const [amountToPay, setAmountToPay] = useState(0);
 
   // Refs
   const pollIntervalRef = useRef(null);
@@ -35,14 +35,13 @@ function CheckoutForm() {
   const API_URL = process.env.REACT_APP_API_URL || 'https://jayshoppy3-backend-1.onrender.com/api';
   const getToken = () => localStorage.getItem('token');
 
-  // Load cart on mount
+  // Load cart
   useEffect(() => {
     loadCart();
     return () => stopPolling();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Countdown timer
+  // Timer
   useEffect(() => {
     if (showPaymentScreen && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
@@ -50,7 +49,6 @@ function CheckoutForm() {
     } else if (showPaymentScreen && timeLeft === 0) {
       handleTimeout();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPaymentScreen, timeLeft]);
 
   const loadCart = async () => {
@@ -120,7 +118,7 @@ function CheckoutForm() {
       const orderData = await orderRes.json();
       const dbOrderId = orderData.orderId;
 
-      // 2. Create UPI Payment
+      // 2. Create Payment
       const paymentRes = await fetch(`${API_URL}/user/create-upi-payment`, {
         method: 'POST',
         headers: {
@@ -133,17 +131,14 @@ function CheckoutForm() {
       if (!paymentRes.ok) throw new Error(await paymentRes.text());
       const paymentData = await paymentRes.json();
 
-      const amount = paymentData.amount || orderData.amount || cart?.totalPrice || 0;
-      const finalOrderId = paymentData.orderId || dbOrderId;
-
-      setAmountToPay(amount);
-      setOrderId(finalOrderId);
-      setQrUrl(paymentData.qrCodeUrl || '');
+      setPaymentData(paymentData);
+      setAmountToPay(paymentData.amount || cart?.totalPrice || 0);
+      setOrderId(paymentData.orderId || dbOrderId);
       setShowPaymentScreen(true);
       setTimeLeft(300);
-      startPolling(finalOrderId);
+      startPolling(paymentData.orderId?.replace(/^ORD_/, '') || dbOrderId);
 
-      toast.success('QR Generated! Scan & Pay');
+      toast.success('Payment Ready! Choose your method');
     } catch (err) {
       setError(err.message);
       toast.error(err.message || 'Payment setup failed');
@@ -156,7 +151,7 @@ function CheckoutForm() {
     setIsPolling(true);
 
     const token = getToken();
-    const apiId = String(id).replace(/^ORD_/, '');
+    const apiId = String(id);
 
     pollIntervalRef.current = setInterval(async () => {
       try {
@@ -181,7 +176,7 @@ function CheckoutForm() {
           stopPolling();
           updateCartCount();
           toast.success('Payment Successful!');
-          const tx = data.transactionId || data.transaction_id || '';
+          const tx = data.transactionId || '';
           navigate('/order-success', { state: { orderId: apiId, transactionId: tx } });
         } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(status)) {
           stopPolling();
@@ -221,13 +216,12 @@ function CheckoutForm() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // Loading & Empty States
   if (loading) return <div className="loading">Loading cart...</div>;
   if (!cart?.items?.length) return <div className="empty">Your cart is empty</div>;
 
   const cartTotal = cart.totalPrice || 0;
 
-  // Checkout Form
+  // === CHECKOUT FORM ===
   if (!showPaymentScreen) {
     return (
       <div className="checkout-container">
@@ -247,7 +241,7 @@ function CheckoutForm() {
               <input name="pincode" placeholder="Pincode *" value={address.pincode} onChange={handleInput} required />
 
               <button type="submit" className="pay-btn-final">
-                Pay ₹{cartTotal.toFixed(2)} via QR
+                Pay ₹{cartTotal.toFixed(2)}
               </button>
               {error && <div className="error">{error}</div>}
             </form>
@@ -270,57 +264,72 @@ function CheckoutForm() {
     );
   }
 
-  // QR Payment Screen
+  // === FINAL PAYMENT SCREEN – UPI QR + CARDS ===
   return (
     <div className="payment-screen">
       <div className="payment-card">
-        <h2>Scan QR to Pay</h2>
-        <p>Amount: <strong>₹{Number(amountToPay).toFixed(2)}</strong></p>
 
-        <div className="qr-container">
-          {qrUrl ? (
-            <img src={qrUrl} alt="Scan to Pay" className="qr-img" />
+        <h2>Complete Your Payment</h2>
+        <p className="amount-big">₹{Number(amountToPay).toFixed(2)}</p>
+
+        {/* UPI QR MODE */}
+        <div className="payment-mode">
+          <h3>Scan with Any UPI App</h3>
+          <div className="qr-container">
+            {paymentData?.qrCodeUrl ? (
+              <img src={paymentData.qrCodeUrl} alt="UPI QR Code" className="qr-img" />
+            ) : (
+              <div className="no-qr">Generating QR Code...</div>
+            )}
+          </div>
+          <p className="scan-text">Works with <strong>GPay • PhonePe • Paytm • BHIM</strong></p>
+          <button 
+            className="btn-copy"
+            onClick={() => paymentData?.qrCodeUrl && navigator.clipboard.writeText(paymentData.qrCodeUrl)}
+          >
+            Copy QR Link
+          </button>
+        </div>
+
+        <div className="separator">
+          <span>OR</span>
+        </div>
+
+        {/* CARD & ALL METHODS MODE */}
+        <div className="payment-mode">
+          <h3>Pay with Card, Wallet or Net Banking</h3>
+          <p style={{ fontSize: '14px', color: '#666', margin: '10px 0' }}>
+            Visa • MasterCard • RuPay • Paytm • PhonePe • Amazon Pay • 50+ Banks
+          </p>
+
+          {paymentData?.paymentLink ? (
+            <button
+              className="btn-full-checkout"
+              onClick={() => window.open(paymentData.paymentLink, '_blank')}
+            >
+              Pay with Card / Wallet / Bank
+            </button>
           ) : (
-            <div className="no-qr">Generating QR Code...</div>
+            <button disabled className="btn-disabled">
+              Loading Payment Options...
+            </button>
           )}
         </div>
 
-        <p className="scan-text">Scan with <strong>PhonePe • GPay • Paytm</strong></p>
-
+        {/* Timer */}
         <div className="timer">
           <div className="time-circle">{formatTime(timeLeft)}</div>
           <p>Time remaining</p>
         </div>
 
+        {/* Actions */}
         <div className="qr-actions">
-          <button
-            className="btn"
-            onClick={() => {
-              const apiId = String(orderId).replace(/^ORD_/, '');
-              if (apiId && !isPolling) startPolling(apiId);
-            }}
+          <button 
+            className="btn" 
+            onClick={() => startPolling(orderId.replace(/^ORD_/, ''))}
             disabled={isPolling}
           >
-            {isPolling ? 'Checking...' : 'Check Status'}
-          </button>
-
-          <button
-            className="btn-secondary"
-            onClick={() => window.location.href = `/payment-return?orderId=${encodeURIComponent(orderId)}`}
-          >
-            Open Return Page
-          </button>
-
-          <button
-            className="btn-ghost"
-            onClick={() => {
-              if (qrUrl) {
-                navigator.clipboard.writeText(qrUrl);
-                toast.success('QR Link Copied!');
-              }
-            }}
-          >
-            Copy QR Link
+            {isPolling ? 'Checking...' : 'Check Payment Status'}
           </button>
         </div>
 
