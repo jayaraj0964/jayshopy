@@ -1,5 +1,7 @@
 // src/services/api.js
-const API_URL = 'https://jayshoppy3-backend-1.onrender.com/api';
+ const API_URL = 'http://localhost:8080/api';
+//  'https://jayshopfinal2.onrender.com/api';
+// import { API_URL } from '../context/config';
 
 const getToken = () => localStorage.getItem('token');
 
@@ -231,7 +233,7 @@ getAllOrdersAdmin: async () => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Login required');
 
-  const res = await fetch('https://jayshoppy3-backend-1.onrender.com/api/admin/admin/orders', {
+  const res = await fetch('https://jayshopfinal2.onrender.com/api/admin/orders', {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,

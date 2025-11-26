@@ -3,7 +3,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://jayshoppy3-backend-1.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL ||'http://localhost:8080/api';
+//  'https://jayshopfinal2.onrender.com/api';
 const getToken = () => localStorage.getItem('token');
 
 export default function PaymentReturnPage() {
