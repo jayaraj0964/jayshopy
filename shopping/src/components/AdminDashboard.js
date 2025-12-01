@@ -175,7 +175,7 @@ useEffect(() => {
                     className="search-input"
                   />
                 </div>
-                <a href="http://localhost:3000/createproduct" className="add-button" target="_blank" rel="noopener noreferrer">
+                <a href="https://jayshopy008.vercel.app/createproduct" className="add-button" target="_blank" rel="noopener noreferrer">
                   <Plus className="w-5 h-5" /> Add Product
                 </a>
               </div>
