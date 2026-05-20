@@ -1,5 +1,5 @@
 // src/services/api.js
- const API_URL = 'http://localhost:8080/api';
+ const API_URL = 'https://jayshoppy3-backend-1-utzc.onrender.com/api';
 //  'https://jayshopfinal2.onrender.com/api';
 // import { API_URL } from '../context/config';
 

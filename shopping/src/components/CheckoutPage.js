@@ -14,8 +14,8 @@ export default function CheckoutPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
 
-  // Localhost backend + Live payments = Perfect combo
-  const API_URL = 'http://localhost:8080/api';
+  // Backend API URL
+  const API_URL = 'https://jayshoppy3-backend-1-utzc.onrender.com/api';
 
   const getToken = () => localStorage.getItem('token');
 
