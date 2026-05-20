@@ -1,5 +1,6 @@
 // src/components/AdminDashboard.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
@@ -175,9 +176,9 @@ useEffect(() => {
                     className="search-input"
                   />
                 </div>
-                <a href="https://jayshopy008.vercel.app/createproduct" className="add-button" target="_blank" rel="noopener noreferrer">
+                <Link to="/createproduct" className="add-button">
                   <Plus className="w-5 h-5" /> Add Product
-                </a>
+                </Link>
               </div>
 
               <div className="products-list">
