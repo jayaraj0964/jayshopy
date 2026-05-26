@@ -3,12 +3,14 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Confetti from 'react-confetti';
 import { CheckCircle, ShoppingBag } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const OrderSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [showConfetti, setShowConfetti] = useState(true);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
+  const { updateCartCount } = useAuth();
 
   // Priority: URL → localStorage → fallback
   const urlOrderId = searchParams.get('order_id');
@@ -62,6 +64,7 @@ const OrderSuccess = () => {
                 duration: 6000,
                 icon: "Success"
               });
+              updateCartCount(); // Refresh the cart count in UI
             }
           }
 
