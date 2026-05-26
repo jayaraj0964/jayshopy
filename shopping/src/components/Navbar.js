@@ -73,7 +73,7 @@ export default function Navbar() {
           {/* ADMIN DASHBOARD BUTTON */}
           {isAdmin && (
             <Link
-              to="/admin"
+              to="/admindashboard"
               className="admin-dashboard-btn"
             >
               <Package className="w-5 h-5" />
@@ -98,7 +98,7 @@ export default function Navbar() {
                   <Link to="/profile" className="dropdown-item block px-4 py-2 hover:bg-gray-100">My Profile</Link>
                   <Link to="/orders" className="dropdown-item block px-4 py-2 hover:bg-gray-100">My Orders</Link>
                   {isAdmin && (
-                    <Link to="/admin" className="dropdown-item block px-4 py-2 hover:bg-gray-100 text-purple-600 font-medium">
+                    <Link to="/admindashboard" className="dropdown-item block px-4 py-2 hover:bg-gray-100 text-purple-600 font-medium">
                       Admin Dashboard
                     </Link>
                   )}
