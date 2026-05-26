@@ -27,6 +27,7 @@ const OrderSuccess = () => {
 
     // Confetti for 8 seconds
     const confettiTimer = setTimeout(() => setShowConfetti(false), 8000);
+    let interval;
 
     // Start polling only once
     const pollOrderStatus = async () => {
@@ -45,7 +46,7 @@ const OrderSuccess = () => {
       const maxAttempts = 20; // 20 × 2.5s = 50 seconds max wait
       let attempts = 0;
 
-      const interval = setInterval(async () => {
+      interval = setInterval(async () => {
         attempts++;
         try {
           const res = await fetch(`https://jayshoppy3-backend-2.onrender.com/api/user/order-status/${finalOrderId}`, {
@@ -87,15 +88,15 @@ const OrderSuccess = () => {
           console.log("Polling... still waiting for server confirmation");
         }
       }, 2500);
-
-      return () => {
-        clearInterval(interval);
-        clearTimeout(confettiTimer);
-      };
     };
 
     pollOrderStatus();
-  }, [finalOrderId, orderConfirmed, navigate, updateCartCount]);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      clearTimeout(confettiTimer);
+    };
+  }, [finalOrderId, orderConfirmed, orderFailed, navigate, updateCartCount]);
 
   return (
     <div className="success-wrapper">
