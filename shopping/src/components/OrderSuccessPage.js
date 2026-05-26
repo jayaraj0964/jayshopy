@@ -13,7 +13,10 @@ const OrderSuccess = () => {
   // Priority: URL → localStorage → fallback
   const urlOrderId = searchParams.get('order_id');
   const pendingOrderId = localStorage.getItem('pendingDbOrderId');
-  const finalOrderId = urlOrderId || pendingOrderId;
+  const rawOrderId = urlOrderId || pendingOrderId;
+
+  // Normalize Order ID (handles ORD_123 or 123) by stripping the ORD_ prefix
+  const finalOrderId = rawOrderId ? String(rawOrderId).replace(/^ORD_/, '').trim() : null;
 
   useEffect(() => {
     if (!finalOrderId || orderConfirmed) return;
@@ -41,7 +44,7 @@ const OrderSuccess = () => {
       const interval = setInterval(async () => {
         attempts++;
         try {
-          const res = await fetch(`https://jayshopfinal2.onrender.com/api/user/order-status/${finalOrderId}`, {
+          const res = await fetch(`https://jayshoppy3-backend-2.onrender.com/api/user/order-status/${finalOrderId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'

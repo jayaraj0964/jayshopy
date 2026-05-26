@@ -2,7 +2,7 @@
 
 const CONFIG = {
   production: {
-    API_URL: 'https://jayshoppy3-backend-1-utzc.onrender.com/api'
+    API_URL: 'https://jayshoppy3-backend-2.onrender.com/api'
   }
 };
 
@@ -12,7 +12,7 @@ const currentConfig = CONFIG[env];
 
 // For Vercel/Netlify/Render frontend deployment
 if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-  currentConfig.API_URL = 'https://jayshoppy3-backend-1-utzc.onrender.com/api';
+  currentConfig.API_URL = 'https://jayshoppy3-backend-2.onrender.com/api';
 }
 
 export const API_URL = currentConfig.API_URL;

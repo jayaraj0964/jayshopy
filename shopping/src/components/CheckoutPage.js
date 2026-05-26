@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import './CheckoutPage.css';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export default function CheckoutPage() {
   const [sdkLoaded, setSdkLoaded] = useState(false);
 
   // Backend API URL
-  const API_URL = 'https://jayshoppy3-backend-1-utzc.onrender.com/api';
+  const API_URL = 'https://jayshoppy3-backend-2.onrender.com/api';
 
   const getToken = () => localStorage.getItem('token');
 
@@ -129,23 +130,52 @@ export default function CheckoutPage() {
 
       const sessionId = data.payment_session_id;
 
+      // Store pending order ID for success page polling fallback
+      if (data.orderId) {
+        localStorage.setItem('pendingDbOrderId', data.orderId);
+      }
+
+      // Smart dynamic Cashfree mode detection:
+      // 1. Check data.environment returned by backend (if backend is updated)
+      // 2. Check process.env.REACT_APP_CASHFREE_MODE
+      // 3. Fallback to 'sandbox' if on localhost or using onrender.com backend
+      // 4. Otherwise default to 'production'
+      let cashfreeMode = 'production';
+      if (data.environment) {
+        cashfreeMode = data.environment;
+      } else if (process.env.REACT_APP_CASHFREE_MODE) {
+        cashfreeMode = process.env.REACT_APP_CASHFREE_MODE;
+      } else if (
+        typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' ||
+         window.location.hostname.includes('local') ||
+         API_URL.includes('onrender.com'))
+      ) {
+        cashfreeMode = 'sandbox';
+      }
+
+      console.log(`Initializing Cashfree SDK in ${cashfreeMode} mode`);
+
       // Try SDK first (best experience)
       if (window.Cashfree && sdkLoaded) {
         try {
-          const cashfree = window.Cashfree({ mode: "production" });
+          const cashfree = window.Cashfree({ mode: cashfreeMode });
           cashfree.checkout({
             paymentSessionId: sessionId,
             redirectTarget: "_self"
           });
           return;
         } catch (sdkError) {
-          console.warn("SDK failed, using direct link", sdkError);
+          console.warn("SDK failed, using direct link fallback", sdkError);
         }
       }
 
-      // 100% Fallback – Direct link (NEVER FAILS)
-      const directLink = `https://payments.cashfree.com/orders/pay_${sessionId}`;
-      console.log("Opening payment:", directLink);
+      // 100% Fallback – Direct hosted checkout link (NEVER FAILS)
+      const directLink = cashfreeMode === 'production'
+        ? `https://payments.cashfree.com/order/#${sessionId}`
+        : `https://payments-test.cashfree.com/order/#${sessionId}`;
+
+      console.log("Opening payment link:", directLink);
       window.location.href = directLink;
 
     } catch (error) {
@@ -160,8 +190,14 @@ export default function CheckoutPage() {
   // Loading
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 to-pink-800">
-        <div className="text-6xl font-black text-white animate-pulse">Loading Cart...</div>
+      <div className="checkout-wrapper">
+        <div className="checkout-card">
+          <div className="checkout-header">
+            <div className="logo-icon">⌛</div>
+            <h1>Loading Cart...</h1>
+            <p>Preparing your colorful checkout experience.</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -169,8 +205,14 @@ export default function CheckoutPage() {
   // Empty cart
   if (!cart?.items?.length) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 to-purple-900">
-        <div className="text-7xl font-black text-white">Your Cart is Empty!</div>
+      <div className="checkout-wrapper">
+        <div className="checkout-card">
+          <div className="checkout-header">
+            <div className="logo-icon">🛒</div>
+            <h1>Your Cart is Empty!</h1>
+            <p>Add something nice and come back to checkout.</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -178,48 +220,76 @@ export default function CheckoutPage() {
   // Address Form
   if (!showPayment) {
     return (
-      <div className="max-w-7xl mx-auto p-8 bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
-        <h1 className="text-8xl font-black text-center mb-16 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-          Checkout
-        </h1>
+      <div className="checkout-wrapper">
+        <div className="checkout-card">
+          <div className="checkout-header">
+            <div className="logo-icon">✨</div>
+            <h1>Checkout</h1>
+            <p>Fast, secure and bright payment flow.</p>
+          </div>
 
-        <div className="grid lg:grid-cols-2 gap-16">
-          {/* Address Form */}
-          <div className="bg-white p-12 rounded-3xl shadow-3xl border-8 border-purple-300">
-            <h2 className="text-5xl font-bold mb-12 text-purple-800">Delivery Address</h2>
-            <div className="space-y-8">
-              <input name="fullName" placeholder="Full Name *" value={address.fullName} onChange={handleAddressChange} required className="w-full p-6 border-4 border-purple-300 rounded-2xl text-2xl focus:outline-none focus:border-purple-600" />
-              <input name="phone" placeholder="Phone Number *" value={address.phone} onChange={handleAddressChange} required className="w-full p-6 border-4 border-purple-300 rounded-2xl text-2xl" />
-              <input name="street" placeholder="Flat, House no., Building, Street *" value={address.street} onChange={handleAddressChange} required className="w-full p-6 border-4 border-purple-300 rounded-2xl text-2xl" />
-              <input name="landmark" placeholder="Landmark (optional)" value={address.landmark} onChange={handleAddressChange} className="w-full p-6 border-4 border-purple-300 rounded-2xl text-2xl" />
-              
-              <div className="grid grid-cols-2 gap-8">
-                <input name="city" placeholder="City *" value={address.city} onChange={handleAddressChange} required className="p-6 border-4 border-purple-300 rounded-2xl text-2xl" />
-                <input name="state" placeholder="State *" value={address.state} onChange={handleAddressChange} required className="p-6 border-4 border-purple-300 rounded-2xl text-2xl" />
+          <div className="checkout-grid">
+            <div className="form-section">
+              <h2>Delivery Details</h2>
+
+              <div className="form-group">
+                <label>Full Name <span>*</span></label>
+                <input name="fullName" placeholder="Your name" value={address.fullName} onChange={handleAddressChange} required className="input-field" />
               </div>
-              
-              <input name="pincode" placeholder="Pincode *" value={address.pincode} onChange={handleAddressChange} required className="w-full p-6 border-4 border-purple-300 rounded-2xl text-2xl" />
+
+              <div className="form-group">
+                <label>Phone Number <span>*</span></label>
+                <input name="phone" placeholder="10-digit phone" value={address.phone} onChange={handleAddressChange} required className="input-field" />
+              </div>
+
+              <div className="form-group">
+                <label>Street Address <span>*</span></label>
+                <input name="street" placeholder="House, street, area" value={address.street} onChange={handleAddressChange} required className="input-field" />
+              </div>
+
+              <div className="form-group">
+                <label>Landmark</label>
+                <input name="landmark" placeholder="Optional" value={address.landmark} onChange={handleAddressChange} className="input-field" />
+              </div>
+
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>City <span>*</span></label>
+                  <input name="city" placeholder="City" value={address.city} onChange={handleAddressChange} required className="input-field" />
+                </div>
+
+                <div className="form-group">
+                  <label>State <span>*</span></label>
+                  <input name="state" placeholder="State" value={address.state} onChange={handleAddressChange} required className="input-field" />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Pincode <span>*</span></label>
+                <input name="pincode" placeholder="6-digit postal code" value={address.pincode} onChange={handleAddressChange} required className="input-field" />
+              </div>
 
               <button 
                 onClick={() => setShowPayment(true)} 
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-10 rounded-3xl text-4xl font-black hover:scale-105 transition shadow-3xl"
+                className="submit-btn"
               >
                 Continue to Payment
               </button>
             </div>
-          </div>
 
-          {/* Order Summary */}
-          <div className="bg-gradient-to-br from-purple-200 to-pink-200 p-12 rounded-3xl shadow-3xl">
-            <h2 className="text-5xl font-bold mb-12 text-purple-900">Order Summary</h2>
-            {cart.items.map(item => (
-              <div key={item.id} className="flex justify-between py-6 text-3xl border-b-4 border-purple-400">
-                <span>{item.productName} × {item.quantity}</span>
-                <strong>₹{(item.price * item.quantity).toFixed(2)}</strong>
+            <div className="summary-card">
+              <h2>Order Summary</h2>
+              {cart.items.map(item => (
+                <div key={item.id} className="summary-item">
+                  <span>{item.productName} × {item.quantity}</span>
+                  <strong>₹{(item.price * item.quantity).toFixed(2)}</strong>
+                </div>
+              ))}
+              <div className="summary-total">
+                <span>Total</span>
+                <strong>₹{amountToPay.toFixed(2)}</strong>
               </div>
-            ))}
-            <div className="text-7xl font-black text-right mt-16 text-purple-900">
-              Total: ₹{amountToPay.toFixed(2)}
+              <p className="summary-note">Secure checkout powered by Cashfree. Fast and safe payments.</p>
             </div>
           </div>
         </div>
@@ -229,36 +299,36 @@ export default function CheckoutPage() {
 
   // Final Payment Screen
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-red-900 flex items-center justify-center p-8">
-      <div className="bg-white rounded-3xl shadow-3xl p-20 max-w-2xl w-full text-center border-8 border-purple-500">
-        <h2 className="text-6xl font-black mb-10 text-gray-800">Complete Payment</h2>
-        <div className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-16">
-          ₹{amountToPay.toFixed(2)}
+    <div className="checkout-wrapper">
+      <div className="checkout-card payment-card">
+        <div className="checkout-header">
+          <div className="logo-icon">💳</div>
+          <h1>Complete Payment</h1>
+          <p>One tap away from finishing your order.</p>
         </div>
-        
-        <button
-          onClick={initiatePayment}
-          disabled={window.paymentInProgress}
-          className={`w-full text-white text-5xl font-black py-16 rounded-3xl transform transition shadow-3xl mb-10
-            ${window.paymentInProgress 
-              ? 'bg-gray-500 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-110'
-            }`}
-        >
-          {window.paymentInProgress ? "Processing..." : `Pay ₹${amountToPay} Securely`}
-        </button>
+        <div className="form-section">
+          <div className="amount-display">₹{amountToPay.toFixed(2)}</div>
 
-        <p className="text-3xl font-bold text-gray-700 mb-10">
-          Powered by Cashfree Payments<br />
-          UPI • Cards • Wallets • Netbanking • EMI
-        </p>
+          <button
+            onClick={initiatePayment}
+            disabled={window.paymentInProgress}
+            className={`submit-btn ${window.paymentInProgress ? 'success-btn' : ''}`}
+          >
+            {window.paymentInProgress ? "Processing..." : `Pay ₹${amountToPay} Securely`}
+          </button>
 
-        <button 
-          onClick={() => setShowPayment(false)} 
-          className="text-purple-700 font-black text-3xl hover:underline"
-        >
-          ← Change Address
-        </button>
+          <p className="summary-note">
+            Powered by Cashfree Payments<br />
+            UPI • Cards • Wallets • Netbanking • EMI
+          </p>
+
+          <button 
+            onClick={() => setShowPayment(false)} 
+            className="submit-btn success-btn"
+          >
+            ← Change Address
+          </button>
+        </div>
       </div>
     </div>
   );
