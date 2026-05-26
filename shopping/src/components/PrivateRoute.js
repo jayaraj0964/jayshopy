@@ -20,7 +20,7 @@ export default function PrivateRoute({ children, adminOnly = false }) {
 
       // 2. ADMIN ONLY ROUTE
       if (adminOnly) {
-        if (role === 'ROLE_ADMIN') {
+        if (role === 'ROLE_ADMIN' || role === 'ADMIN') {
           setStatus('admin');
         } else {
           setStatus('home'); // USER → HOME

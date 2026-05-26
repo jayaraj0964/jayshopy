@@ -18,9 +18,20 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
+
+      let role = null;
+      let email = null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        role = payload.role;
+        email = payload.sub || payload.email;
+      } catch (decodeErr) {
+        console.error('Failed to decode token payload', decodeErr);
+      }
+
       const cart = await api.getCart();
       setCartCount(cart.items?.length || 0);
-      setUser({ loggedIn: true });
+      setUser({ loggedIn: true, role, email });
     } catch (err) {
       localStorage.removeItem('token');
     }
