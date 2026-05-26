@@ -8,6 +8,24 @@ import { Pencil, Trash2, Plus, Search, Package, Users, X, ShoppingBag, Clock, Ch
 
 const NO_IMAGE = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5OTyBJTUc8L3RleHQ+PC9zdmc+";
 
+const renderShippingAddress = (addressStr) => {
+  if (!addressStr) return 'Not provided';
+  try {
+    const address = JSON.parse(addressStr);
+    return (
+      <div className="formatted-address" style={{ padding: '0.75rem', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '4px', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: '220px', maxWidth: '400px', lineHeight: '1.4' }}>
+        <p style={{ margin: 0, fontWeight: 'bold', color: '#0f172a', fontSize: '0.9rem' }}>{address.fullName}</p>
+        <p style={{ margin: 0, color: '#475569', fontSize: '0.85rem' }}>📞 {address.phone}</p>
+        <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155' }}>{address.street}</p>
+        {address.landmark && <p style={{ margin: 0, fontSize: '0.85rem', fontStyle: 'italic', color: '#64748b' }}>Landmark: {address.landmark}</p>}
+        <p style={{ margin: 0, color: '#1e293b', fontSize: '0.85rem' }}>{address.city}, {address.state} - {address.pincode}</p>
+      </div>
+    );
+  } catch (e) {
+    return addressStr;
+  }
+};
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState([]);
@@ -304,14 +322,14 @@ useEffect(() => {
                         </div>
                         <div>
                           <p className="font-medium">Items</p>
-                          <p>{order.items.length} product(s)</p>
+                          <p>{(order.items || []).length} product(s)</p>
                         </div>
                       </div>
 
                       <div className="border-t pt-4">
                         <p className="font-medium mb-2">Order Items:</p>
                         <div className="space-y-1 text-sm">
-                          {order.items.map((item, idx) => (
+                          {(order.items || []).map((item, idx) => (
                             <div key={idx} className="flex justify-between">
                               <span>{item.productName || 'Unknown'} × {item.quantity}</span>
                               <span>₹{item.priceAtPurchase.toFixed(2)}</span>
@@ -322,7 +340,7 @@ useEffect(() => {
 
                       <div className="mt-4 pt-4 border-t">
                         <p className="font-medium">Shipping Address:</p>
-                        <p className="text-sm text-gray-600">{order.shippingAddress || 'Not provided'}</p>
+                        <div className="text-sm text-gray-600">{renderShippingAddress(order.shippingAddress)}</div>
                       </div>
                     </div>
                   ))

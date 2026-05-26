@@ -74,10 +74,10 @@ export default function Navbar() {
           {isAdmin && (
             <Link
               to="/admin"
-              className="hidden md:flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transition"
+              className="admin-dashboard-btn"
             >
               <Package className="w-5 h-5" />
-              Admin
+              <span>Admin Dashboard</span>
             </Link>
           )}
 

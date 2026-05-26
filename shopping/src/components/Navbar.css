@@ -169,3 +169,26 @@
   align-items: center;
   justify-content: center;
 }
+
+/* Premium Admin Dashboard Button styling */
+.admin-dashboard-btn {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: white !important;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.admin-dashboard-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  opacity: 0.95;
+}
