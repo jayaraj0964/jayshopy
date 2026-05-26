@@ -37,28 +37,29 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState({});
+  const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
 
 
   const loadData = useCallback(async () => {
-      try {
+    try {
       setLoading(true);
-      if (activeTab === 'products') {
-        const prodRes = await api.getAllProductsAdmin();
-        setProducts(prodRes);
-      } else if (activeTab === 'users') {
-        const userRes = await api.getAllUsers();
-        setUsers(userRes);
-      } else if (activeTab === 'orders') {
-        const orderRes = await api.getAllOrdersAdmin();
-        setOrders(orderRes);
-      }
+      // Fetch all three datasets in parallel for accurate stats counters initially
+      const [prodRes, userRes, orderRes] = await Promise.all([
+        api.getAllProductsAdmin().catch(err => { console.error(err); return []; }),
+        api.getAllUsers().catch(err => { console.error(err); return []; }),
+        api.getAllOrdersAdmin().catch(err => { console.error(err); return []; })
+      ]);
+      setProducts(prodRes || []);
+      setUsers(userRes || []);
+      setOrders(orderRes || []);
     } catch (err) {
-      toast.error('Failed to load data');
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
-}, [activeTab]);
-useEffect(() => {
+  }, []);
+
+  useEffect(() => {
     loadData();
   }, [loadData]);
 
@@ -66,6 +67,11 @@ useEffect(() => {
     p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.category?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredOrders = orders.filter(order => {
+    if (orderStatusFilter === 'ALL') return true;
+    return order.status?.toUpperCase() === orderStatusFilter;
+  });
 
   const startEdit = (p) => {
     setEditingProduct(p);
@@ -289,11 +295,42 @@ useEffect(() => {
                 </div>
               </div>
 
+              {/* Status Filter Dropdown */}
+              <div className="search-actions" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <label htmlFor="order-status-filter" style={{ fontWeight: '600', fontSize: '0.95rem', color: '#374151' }}>Filter Status:</label>
+                  <select
+                    id="order-status-filter"
+                    value={orderStatusFilter}
+                    onChange={(e) => setOrderStatusFilter(e.target.value)}
+                    style={{
+                      padding: '0.5rem 1.25rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.9rem',
+                      background: 'white',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <option value="ALL">All Orders</option>
+                    <option value="PAID">PAID</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="SHIPPED">SHIPPED</option>
+                    <option value="DELIVERED">DELIVERED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                    <option value="FAILED">FAILED</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-4">
-                {orders.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No orders yet.</p>
+                {filteredOrders.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No matching orders found.</p>
                 ) : (
-                  orders.map(order => (
+                  filteredOrders.map(order => (
                     <div key={order.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                       <div className="flex justify-between items-start mb-4">
                         <div>
