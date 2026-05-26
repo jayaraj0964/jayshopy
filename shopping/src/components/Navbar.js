@@ -26,7 +26,7 @@ export default function Navbar() {
 
   // SAFE: Only set admin if user exists
   useEffect(() => {
-    if (user && user.role === 'ADMIN') {
+    if (user && (user.role === 'ADMIN' || user.role === 'ROLE_ADMIN')) {
       setIsAdmin(true);
     } else {
       setIsAdmin(false);

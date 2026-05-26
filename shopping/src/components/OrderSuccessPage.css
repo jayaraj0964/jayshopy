@@ -164,6 +164,12 @@
   border: 1px solid #feebc8;
 }
 
+.status-cancelled {
+  background: #fff5f5;
+  color: #e53e3e;
+  border: 1px solid #fed7d7;
+}
+
 .success-button-group {
   display: flex;
   flex-direction: column;

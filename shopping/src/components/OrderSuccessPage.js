@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Confetti from 'react-confetti';
-import { CheckCircle, ShoppingBag, ArrowRight } from 'lucide-react';
+import { CheckCircle, ShoppingBag, ArrowRight, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './OrderSuccessPage.css';
 
@@ -11,6 +11,7 @@ const OrderSuccess = () => {
   const navigate = useNavigate();
   const [showConfetti, setShowConfetti] = useState(true);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
+  const [orderFailed, setOrderFailed] = useState(false);
   const { updateCartCount } = useAuth();
 
   // Priority: URL → localStorage → fallback
@@ -22,7 +23,7 @@ const OrderSuccess = () => {
   const finalOrderId = rawOrderId ? String(rawOrderId).replace(/^ORD_/, '').trim() : null;
 
   useEffect(() => {
-    if (!finalOrderId || orderConfirmed) return;
+    if (!finalOrderId || orderConfirmed || orderFailed) return;
 
     // Confetti for 8 seconds
     const confettiTimer = setTimeout(() => setShowConfetti(false), 8000);
@@ -66,6 +67,13 @@ const OrderSuccess = () => {
                 icon: "Success"
               });
               updateCartCount(); // Refresh the cart count in UI
+            } else if (data.status === "FAILED" || data.status === "CANCELLED") {
+              clearInterval(interval);
+              localStorage.removeItem('pendingDbOrderId');
+              setOrderFailed(true);
+              setShowConfetti(false);
+              toast.dismiss("confirming");
+              toast.error("Payment failed. Please check checkout or retry.");
             }
           }
 
@@ -100,31 +108,37 @@ const OrderSuccess = () => {
         />
       )}
 
-      <div className="success-card-premium animate-fade-in">
-        <div className="success-icon-container">
-          <CheckCircle className={`success-check-icon ${orderConfirmed ? 'pulse-icon' : 'rotate-icon'}`} />
+      <div className="success-card-premium animate-fade-in" style={orderFailed ? { borderColor: '#fecaca' } : {}}>
+        <div className="success-icon-container" style={orderFailed ? { background: '#fef2f2' } : {}}>
+          {orderFailed ? (
+            <XCircle className="success-check-icon pulse-icon" style={{ color: '#ef4444' }} />
+          ) : (
+            <CheckCircle className={`success-check-icon ${orderConfirmed ? 'pulse-icon' : 'rotate-icon'}`} />
+          )}
         </div>
 
-        <h1 className="success-title">
-          {orderConfirmed ? "Payment Successful!" : "Verifying Payment..."}
+        <h1 className="success-title" style={orderFailed ? { color: '#dc2626' } : {}}>
+          {orderConfirmed ? "Payment Successful!" : orderFailed ? "Payment Failed" : "Verifying Payment..."}
         </h1>
 
         <p className="success-subtitle">
           {orderConfirmed 
             ? "Thank you! Your order has been placed and confirmed successfully." 
+            : orderFailed
+            ? "Your payment transaction was not successful. Please try paying again from your orders."
             : "We are waiting for Cashfree to confirm your transaction details."}
         </p>
 
         {finalOrderId && (
-          <div className="success-order-box">
+          <div className="success-order-box" style={orderFailed ? { background: '#f8fafc', border: '1px solid #e2e8f0' } : {}}>
             <span className="order-box-label">Order Reference ID</span>
             <strong className="order-box-id">ORD_{finalOrderId}</strong>
           </div>
         )}
 
         <div className="success-status-badge-container">
-          <span className={`status-badge-val ${orderConfirmed ? 'status-paid' : 'status-pending'}`}>
-            Status: {orderConfirmed ? "PAID" : "CONFIRMING..."}
+          <span className={`status-badge-val ${orderConfirmed ? 'status-paid' : orderFailed ? 'status-cancelled' : 'status-pending'}`}>
+            Status: {orderConfirmed ? "PAID" : orderFailed ? "FAILED" : "CONFIRMING..."}
           </span>
         </div>
 
