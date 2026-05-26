@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Confetti from 'react-confetti';
-import { CheckCircle, ShoppingBag } from 'lucide-react';
+import { CheckCircle, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import './OrderSuccessPage.css';
 
 const OrderSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -86,67 +87,68 @@ const OrderSuccess = () => {
     };
 
     pollOrderStatus();
-  }, [finalOrderId, orderConfirmed, navigate]);
+  }, [finalOrderId, orderConfirmed, navigate, updateCartCount]);
 
   return (
-    <>
-      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} numberOfPieces={400} />}
+    <div className="success-wrapper">
+      {showConfetti && (
+        <Confetti 
+          width={window.innerWidth} 
+          height={window.innerHeight} 
+          recycle={false} 
+          numberOfPieces={300} 
+        />
+      )}
 
-      <div className="min-h-screen bg-gradient-to-br from-green-500 via-emerald-600 to-teal-700 flex items-center justify-center p-6 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 bg-black opacity-20"></div>
-        
-        <div className="relative z-10 bg-white rounded-3xl shadow-2xl p-12 max-w-4xl w-full text-center transform transition-all hover:scale-[1.02]">
-          <div className="mb-10">
-            <CheckCircle className="w-32 h-32 mx-auto text-green-600 animate-bounce" />
+      <div className="success-card-premium animate-fade-in">
+        <div className="success-icon-container">
+          <CheckCircle className={`success-check-icon ${orderConfirmed ? 'pulse-icon' : 'rotate-icon'}`} />
+        </div>
+
+        <h1 className="success-title">
+          {orderConfirmed ? "Payment Successful!" : "Verifying Payment..."}
+        </h1>
+
+        <p className="success-subtitle">
+          {orderConfirmed 
+            ? "Thank you! Your order has been placed and confirmed successfully." 
+            : "We are waiting for Cashfree to confirm your transaction details."}
+        </p>
+
+        {finalOrderId && (
+          <div className="success-order-box">
+            <span className="order-box-label">Order Reference ID</span>
+            <strong className="order-box-id">ORD_{finalOrderId}</strong>
           </div>
+        )}
 
-          <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600 mb-6">
-            Payment Successful!
-          </h1>
+        <div className="success-status-badge-container">
+          <span className={`status-badge-val ${orderConfirmed ? 'status-paid' : 'status-pending'}`}>
+            Status: {orderConfirmed ? "PAID" : "CONFIRMING..."}
+          </span>
+        </div>
 
-          <p className="text-2xl md:text-4xl text-gray-700 font-semibold mb-4">
-            Thank you for your order!
-          </p>
+        <div className="success-button-group">
+          <button
+            onClick={() => navigate('/orders')}
+            className="success-btn-main primary-btn-success"
+          >
+            <ShoppingBag size={20} /> View My Orders
+          </button>
 
-          {finalOrderId && (
-            <div className="bg-gray-100 rounded-2xl py-6 px-10 inline-block mb-8">
-              <p className="text-lg text-gray-600">Your Order ID</p>
-              <p className="text-3xl font-bold text-emerald-600 tracking-wider">
-                {finalOrderId}
-              </p>
-            </div>
-          )}
+          <button
+            onClick={() => navigate('/')}
+            className="success-btn-main secondary-btn-success"
+          >
+            Continue Shopping <ArrowRight size={20} />
+          </button>
+        </div>
 
-          <p className="text-xl text-gray-600 mb-10">
-            {orderConfirmed 
-              ? "Your order has been confirmed and is being processed."
-              : "We're confirming your payment... Please wait a moment."}
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <button
-              onClick={() => navigate('/orders')}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-6 rounded-2xl text-2xl font-bold flex items-center justify-center gap-3 transition transform hover:scale-105 shadow-xl"
-            >
-              <ShoppingBag size={32} />
-              View My Orders
-            </button>
-
-            <button
-              onClick={() => navigate('/products')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-10 py-6 rounded-2xl text-2xl font-bold transition transform hover:scale-105 shadow-xl"
-            >
-              Continue Shopping
-            </button>
-          </div>
-
-          <div className="mt-12 text-gray-500 text-lg">
-            <p>You will receive an email confirmation shortly.</p>
-          </div>
+        <div className="success-footer-note">
+          <p>A confirmation email with invoice details will be sent shortly.</p>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
