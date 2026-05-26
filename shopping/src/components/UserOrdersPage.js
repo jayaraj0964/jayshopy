@@ -5,6 +5,41 @@ import { toast } from 'react-hot-toast';
 import { Package, Search, CreditCard, ChevronRight, MapPin, Download, MessageCircle } from 'lucide-react';
 import './UserOrdersPage.css';
 
+const getStatusClass = (status) => {
+  switch (status?.toUpperCase()) {
+    case 'DELIVERED':
+      return 'status-delivered';
+    case 'PENDING':
+    case 'PROCESSING':
+      return 'status-processing';
+    case 'SHIPPED':
+      return 'status-shipped';
+    case 'CANCELLED':
+    case 'FAILED':
+      return 'status-cancelled';
+    default:
+      return 'status-default';
+  }
+};
+
+const renderShippingAddress = (addressStr) => {
+  if (!addressStr) return null;
+  try {
+    const address = JSON.parse(addressStr);
+    return (
+      <div className="formatted-address">
+        <p className="address-name"><strong>{address.fullName}</strong></p>
+        <p className="address-phone">📞 {address.phone}</p>
+        <p className="address-street">{address.street}</p>
+        {address.landmark && <p className="address-landmark">Landmark: {address.landmark}</p>}
+        <p className="address-city-state">{address.city}, {address.state} - <strong>{address.pincode}</strong></p>
+      </div>
+    );
+  } catch (e) {
+    return <p className="address-plain">{addressStr}</p>;
+  }
+};
+
 export default function UserOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
@@ -96,8 +131,13 @@ export default function UserOrdersPage() {
             <div key={order.id} className="order-card" onClick={() => setSelectedOrder(order)}>
               <div className="card-header">
                 <div>
-                  <h3>Order #{order.id}</h3>
-                  <p className="order-date">{formatDate(order.orderDate)}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                    <h3 style={{ margin: 0 }}>Order #{order.id}</h3>
+                    <span className={`status-badge ${getStatusClass(order.status)}`}>
+                      {order.status || 'PENDING'}
+                    </span>
+                  </div>
+                  <p className="order-date" style={{ margin: 0 }}>{formatDate(order.orderDate)}</p>
                 </div>
                 <button className="view-btn" onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}>
                   View Details <ChevronRight className="chevron" />
@@ -178,6 +218,18 @@ function OrderDetailsModal({ order, onClose }) {
               <p className="label">Order Date</p>
               <p>{new Date(order.orderDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
             </div>
+            <div>
+              <p className="label">Status</p>
+              <span className={`status-badge ${getStatusClass(order.status)}`} style={{ display: 'inline-block', width: 'fit-content' }}>
+                {order.status || 'PENDING'}
+              </span>
+            </div>
+            {order.transactionId && (
+              <div>
+                <p className="label">Transaction ID</p>
+                <p style={{ wordBreak: 'break-all' }}>{order.transactionId}</p>
+              </div>
+            )}
           </div>
 
           <hr />
@@ -210,7 +262,7 @@ function OrderDetailsModal({ order, onClose }) {
           {/* ONLY TOTAL */}
           <div className="summary">
             <div className="summary-total">
-              <span>Total Paid</span>
+              <span>{['PAID', 'SHIPPED', 'DELIVERED'].includes(order.status?.toUpperCase()) ? 'Total Paid' : 'Total Amount'}</span>
               <span>₹{order.total.toFixed(2)}</span>
             </div>
           </div>
@@ -220,7 +272,10 @@ function OrderDetailsModal({ order, onClose }) {
               <hr />
               <div className="address">
                 <h3>Shipping Address</h3>
-                <p><MapPin className="inline-icon" /> {order.shippingAddress}</p>
+                <div className="address-detail-container">
+                  <MapPin className="inline-icon address-pin-icon" />
+                  {renderShippingAddress(order.shippingAddress)}
+                </div>
               </div>
             </>
           )}

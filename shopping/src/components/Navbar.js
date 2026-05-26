@@ -1,5 +1,5 @@
 // src/components/Navbar.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, ShoppingCart, User, ChevronDown, Package } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,19 @@ export default function Navbar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // SAFE: Only set admin if user exists
   useEffect(() => {
@@ -70,7 +83,7 @@ export default function Navbar() {
 
           {/* USER DROPDOWN */}
           {user ? (
-            <div className="dropdown relative">
+            <div className="dropdown relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
                 className="dropdown-toggle flex items-center gap-2 text-gray-700 hover:text-blue-600 font-medium"
