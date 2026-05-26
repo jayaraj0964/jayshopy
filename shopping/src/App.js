@@ -14,6 +14,7 @@ import OrderSuccessPage from './components/OrderSuccessPage';
 import { Toaster } from 'react-hot-toast';
 import AdminDashboard from './components/AdminDashboard';
 import UserOrdersPage from './components/UserOrdersPage';
+import ProfilePage from './components/ProfilePage';
 
 function App() {
   return (
@@ -39,9 +40,11 @@ function App() {
 
           <Route path="/order-success" element={<OrderSuccessPage />} />
          
-         <Route path="/admindashboard" element={<AdminDashboard />} />
+          <Route path="/admindashboard" element={<AdminDashboard />} />
 
-        <Route path="/orders" element={<UserOrdersPage />} />
+          <Route path="/orders" element={<UserOrdersPage />} />
+
+          <Route path="/profile" element={<ProfilePage />} />
 
           {/* ADMIN */}
           <Route

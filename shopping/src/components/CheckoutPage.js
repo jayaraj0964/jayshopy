@@ -128,7 +128,7 @@ export default function CheckoutPage() {
       toast.dismiss("pay");
       toast.success("Redirecting to Cashfree...");
 
-      const sessionId = data.payment_session_id;
+      const sessionId = data.payment_session_id || data.paymentSessionId;
 
       // Store pending order ID for success page polling fallback
       if (data.orderId) {
@@ -156,7 +156,7 @@ export default function CheckoutPage() {
 
       console.log(`Initializing Cashfree SDK in ${cashfreeMode} mode`);
 
-      // Try SDK first (best experience)
+      // Try SDK (best experience, required for payment_session_id)
       if (window.Cashfree && sdkLoaded) {
         try {
           const cashfree = window.Cashfree({ mode: cashfreeMode });
@@ -170,7 +170,7 @@ export default function CheckoutPage() {
         }
       }
 
-      // 100% Fallback – Direct hosted checkout link (NEVER FAILS)
+      // 100% Fallback/Primary – Direct hosted checkout link (NEVER FAILS)
       const directLink = cashfreeMode === 'production'
         ? `https://payments.cashfree.com/order/#${sessionId}`
         : `https://payments-test.cashfree.com/order/#${sessionId}`;
