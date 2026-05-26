@@ -80,7 +80,11 @@ export default function AdminDashboard() {
       description: p.description,
       price: p.price,
       stock: p.stock,
-      category: p.category
+      category: p.category,
+      vendorName: p.vendorName || '',
+      vendorShopName: p.vendorShopName || '',
+      vendorPhone: p.vendorPhone || '',
+      costPrice: p.costPrice || ''
     });
     setShowEditModal(true);
   };
@@ -220,10 +224,34 @@ export default function AdminDashboard() {
                         <div>
                           <h3 className="product-name">{p.name}</h3>
                           <p className="product-description">{p.description || 'No description'}</p>
-                          <div className="product-badges">
-                            <span className="badge green">₹{p.price}</span>
+                          <div className="product-badges" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                            <span className="badge green">Price: ₹{p.price}</span>
+                            {p.costPrice !== undefined && p.costPrice !== null && p.costPrice > 0 && (
+                              <span className="badge purple" style={{ background: '#f3e8ff', color: '#6b21a8', border: '1px solid #e9d5ff' }}>Cost: ₹{p.costPrice}</span>
+                            )}
+                            {p.price && p.costPrice && p.price > p.costPrice && (
+                              <span className="badge orange" style={{ background: '#ffedd5', color: '#ea580c', border: '1px solid #fed7aa' }}>
+                                Margin: ₹{(p.price - p.costPrice).toFixed(2)}
+                              </span>
+                            )}
                             <span className="badge blue">{p.stock} in stock</span>
                           </div>
+                          {(p.vendorName || p.vendorShopName || p.vendorPhone) && (
+                            <div className="vendor-info-badge" style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#475569', background: '#f8fafc', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', gap: '0.2rem', textAlign: 'left' }}>
+                              <p style={{ margin: 0 }}><strong>Shop:</strong> {p.vendorShopName || 'N/A'}</p>
+                              <p style={{ margin: 0 }}><strong>Contact:</strong> {p.vendorName || 'N/A'}</p>
+                              {p.vendorPhone && (
+                                <a 
+                                  href={`https://wa.me/${p.vendorPhone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(p.vendorName || '')},%20is%20the%20product%20${encodeURIComponent(p.name)}%20in%20stock?`}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ marginTop: '0.2rem', color: '#16a34a', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', textDecoration: 'underline' }}
+                                >
+                                  💬 Contact via WhatsApp ({p.vendorPhone})
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="product-actions">
@@ -423,6 +451,29 @@ export default function AdminDashboard() {
               <div className="form-group">
                 <label className="form-label">Category</label>
                 <input type="text" value={editFormData.category || ''} onChange={(e) => handleEditChange('category', e.target.value)} className="form-input" />
+              </div>
+              <h4 style={{ margin: '1.5rem 0 0.75rem 0', fontSize: '0.95rem', fontWeight: 'bold', color: '#6b21a8', borderBottom: '1px solid #f3e8ff', paddingBottom: '0.2rem' }}>
+                Sourcing & Supplier Details
+              </h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Vendor Name</label>
+                  <input type="text" value={editFormData.vendorName || ''} onChange={(e) => handleEditChange('vendorName', e.target.value)} className="form-input" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Shop Name</label>
+                  <input type="text" value={editFormData.vendorShopName || ''} onChange={(e) => handleEditChange('vendorShopName', e.target.value)} className="form-input" />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Vendor Phone</label>
+                  <input type="text" value={editFormData.vendorPhone || ''} onChange={(e) => handleEditChange('vendorPhone', e.target.value)} className="form-input" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Cost Price (₹)</label>
+                  <input type="number" step="0.01" value={editFormData.costPrice || ''} onChange={(e) => handleEditChange('costPrice', e.target.value)} className="form-input" />
+                </div>
               </div>
             </div>
             <div className="modal-footer">

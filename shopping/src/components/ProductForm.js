@@ -13,7 +13,11 @@ export default function ProductForm() {
     stock: '',
     category: '',
     size: '',
-    color: ''
+    color: '',
+    vendorName: '',
+    vendorShopName: '',
+    vendorPhone: '',
+    costPrice: ''
   });
 
   // File states
@@ -40,7 +44,8 @@ export default function ProductForm() {
       // Reset form
       setForm({
         name: '', description: '', price: '', stock: '',
-        category: '', size: '', color: ''
+        category: '', size: '', color: '',
+        vendorName: '', vendorShopName: '', vendorPhone: '', costPrice: ''
       });
       setMainFile(null);
       setExtraFiles([]);
@@ -115,6 +120,39 @@ export default function ProductForm() {
             onChange={(e) => setForm({ ...form, color: e.target.value })}
             required
           />
+
+          <h3 style={{ margin: '1.5rem 0 0.5rem 0', fontSize: '1.1rem', color: '#6b21a8', borderBottom: '1px solid #e9d5ff', paddingBottom: '0.3rem' }}>
+            Supplier & Sourcing Details
+          </h3>
+          <div className="row">
+            <input
+              type="text"
+              placeholder="Vendor/Supplier Name"
+              value={form.vendorName}
+              onChange={(e) => setForm({ ...form, vendorName: e.target.value })}
+            />
+            <input
+              type="text"
+              placeholder="Shop Name"
+              value={form.vendorShopName}
+              onChange={(e) => setForm({ ...form, vendorShopName: e.target.value })}
+            />
+          </div>
+
+          <div className="row">
+            <input
+              type="text"
+              placeholder="Vendor Phone Number"
+              value={form.vendorPhone}
+              onChange={(e) => setForm({ ...form, vendorPhone: e.target.value })}
+            />
+            <input
+              type="number"
+              placeholder="Cost Price (Sourcing Price)"
+              value={form.costPrice}
+              onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
+            />
+          </div>
 
           <div className="file-upload">
             <label>Main Image *:</label>
