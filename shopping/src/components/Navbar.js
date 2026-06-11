@@ -1,6 +1,6 @@
 // src/components/Navbar.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, ShoppingCart, User, ChevronDown, Package } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Navbar.css';
@@ -11,6 +11,26 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -60,9 +80,15 @@ export default function Navbar() {
           <input
             type="text"
             placeholder="Search for products, brands and more"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="w-full px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none"
           />
-          <button className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700">
+          <button 
+            onClick={handleSearch}
+            className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700"
+          >
             <Search className="w-5 h-5" />
           </button>
         </div>

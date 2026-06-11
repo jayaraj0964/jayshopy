@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast'; 
 import './UserDashboard.css';
 
@@ -12,7 +12,26 @@ function UserDashboard() {
   const { user, cartCount, updateCartCount } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  // const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const searchQuery = searchParams.get('search') || '';
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  const filteredProducts = products.filter(product => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      product.name?.toLowerCase().includes(query) ||
+      product.description?.toLowerCase().includes(query) ||
+      product.category?.toLowerCase().includes(query)
+    );
+  });
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -84,9 +103,9 @@ function UserDashboard() {
           ))}
         </div>
       ) : user ? (
-        products.length > 0 ? (
+        filteredProducts.length > 0 ? (
           <div className="products-grid">
-            {products.map(product => (
+            {filteredProducts.map(product => (
               <div key={product.id} className="product-card">
                 <div className="image-container">
                   <img
@@ -117,7 +136,7 @@ function UserDashboard() {
             ))}
           </div>
         ) : (
-          <p>No products available.</p>
+          <p>{searchQuery ? `No products match "${searchQuery}"` : 'No products available.'}</p>
         )
       ) : (
         <p>Please <Link to="/login">login</Link> to view products.</p>
