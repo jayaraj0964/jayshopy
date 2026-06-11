@@ -282,12 +282,33 @@ createUpiPayment: async (data) => {
     return res.json();
   },
 
-getOrderStatus: async (orderId) => {
+  getOrderStatus: async (orderId) => {
     const res = await fetch(`${API_URL}/user/order-status/${orderId}`, {
       headers: { 'Authorization': `Bearer ${getToken()}` }
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json(); // { status: "PAID" }
+  },
+
+  tryOn: async (userImageFile, productImageBase64) => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('userImage', userImageFile);
+    formData.append('productImage', productImageBase64);
+
+    const res = await fetch(`${API_URL}/user/try-on`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err || 'AI Try-on failed');
+    }
+    return res.json(); // returns { resultImage: "..." }
   }
 
 };
